@@ -1,0 +1,168 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+import { ChatBubbleLeftRightIcon, UserCircleIcon } from "@heroicons/vue/24/outline";
+import { IdentificationIcon, InformationCircleIcon } from '@heroicons/vue/24/solid'
+
+import viewshelterpostdetials from '@/components/Buddy/buddy_Home_ViewdetailsModal.vue';
+import viewbuddypostdetials from '@/components/Shelter/shelter_RescueOp_ReportViewdetailsModal.vue';
+
+import default_avatar from '@/assets/images/buddy_default.jpg'
+
+// import viewpostdetials from '@/components/Buddy/buddy_Home_ViewdetailsModal.vue';
+import viewpostimagepreview from '@/components/Buddy/buddy_Home_ImagePreviewModal.vue';
+
+import previewhover from '@/components/Buddy/buddy_HoverName.vue';
+const hoveredIndex = ref(null); // Track the hovered item index
+
+// view detials
+const selectedPostViewDetailsId = ref(null);
+
+const toggleModalViewDetails = (id) => {
+    selectedPostViewDetailsId.value = selectedPostViewDetailsId.value === id ? null : id;
+    const foundPost = posts.value.find(post => post.post_id === selectedPostViewDetailsId.value);
+
+    if (foundPost) {
+        selectedPostDetails.value = foundPost
+    }
+};
+
+// view image preview
+const selectedPostViewImagePreviewId = ref(null);
+const toggleModalViewImagePreview = (id) => {
+    selectedPostViewImagePreviewId.value = selectedPostViewImagePreviewId.value === id ? null : id;
+    console.log(id);
+};
+
+//function 
+let selectedPost = ref(null)
+let posts = ref([])
+let selectedPostDetails = ref([])
+async function retrieveReports() {
+    try {
+        console.log("retrieveReports")
+        const response = await axios.post("http://localhost:5000/getereports", {
+        });
+
+        if (response.data && response.data.length > 0) {
+            posts.value = response.data
+        }
+        console.log("post value", posts.value)
+    }
+    catch (err) {
+        console.log("error in retrieve reports", err)
+    }
+}
+
+onMounted(async () => {
+    await retrieveReports()
+})
+
+</script>
+
+<template>
+    <div v-for="post in posts" :key="post.post_id"
+        class="sm:w-full md:w-[80%] lg:w-[70%] xl:container  xl:w-[50rem] h-fit mb-4 mx-auto bg-white py-2 px-4  rounded-xl">
+        <div class="px-[.5rem] py-[10px] flex gap-x-2 items-center">
+            <div>
+                <img :src="post.profile || default_avatar" alt="profile"
+                    class="w-10 h-10 flex border bg-white rounded-full object-cover" />
+            </div>
+
+            <RouterLink to="" class="font-bold text-base"> <!-- path sa view user profile butang sa to="" -->
+                <div @mouseenter="hoveredIndex = post.post_id" @mouseleave="hoveredIndex = null"
+                    class="relative inline-block">
+                    <span class="hover:underline cursor-pointer">{{ post.posted_by }}</span>
+                    <previewhover v-if="hoveredIndex === post.post_id" :_user_id="post.user_id" class="absolute z-10" />
+                </div>
+            </RouterLink>
+            <!-- <span class="text-[11px] border py-1 px-3 font-medium rounded-full bg-gray-50">{{ post.post_type }}</span> -->
+            <span :class="{
+                'text-[10px] border py-1 px-3 font-medium rounded-full text-center': true,
+                'bg-amber-50 border-amber-300 text-amber-500': post.post_type === 'Missing Report',
+                'bg-red-50 border-red-300 text-red-500': post.post_type === 'Stray Report',
+                'bg-teal-50 border-teal-300 text-teal-500': post.post_type === 'Adoption',
+                'bg-gray-50': post.post_type !== 'Missing Report' && post.post_type !== 'Stray Report' && post.post_type !== 'Adoption',
+            }">{{ post.post_type }}</span>
+            <span :class="{
+                'text-[10px] border py-1 px-3 font-medium rounded-full text-center': true,
+                'bg-amber-50 border-amber-300 text-amber-500': post.report_status === 'In progress',
+                'bg-red-50 border-red-300 text-red-500': post.report_status === 'Pending',
+                'bg-teal-50 border-teal-300 text-teal-500': post.report_status === 'Rescued',
+                'bg-gray-50': post.post_type !== 'In progress' && post.report_status !== 'Pending' && post.report_status !== 'Rescued',
+            }">{{ post.report_status }}</span>
+        </div>
+
+        <div class="w-full h-fit rounded-xl bg-black flex flex-col items-center relative group">
+            <div v-if="post.post_type == 'Adoption'">
+                <img @click="toggleModalViewDetails(post.post_id)"
+                    class="mx-auto flex-shrink-0 w-[50rem] h-[30rem] object-cover rounded-xl  cursor-pointer"
+                    :src="post.photos[0]" alt="image post" />
+            </div>
+            <div v-else>
+                <img @click="toggleModalViewDetails(post.post_id)"
+                    class="mx-auto flex-shrink-0 w-[50rem] h-[30rem] object-cover rounded-xl cursor-pointer"
+                    :src="post.photos[0]" alt="image post" />
+            </div>
+
+
+            <!-- Image Preview -->
+            <viewpostimagepreview v-if="selectedPostViewImagePreviewId === post.post_id"
+                @close="toggleModalViewImagePreview(post.id)" />
+            <!-- view details button -->
+            <div class="absolute bg-gray-900 bg-opacity-30 rounded-b-xl w-full bottom-0 hidden group-hover:block">
+
+                <div class="flex justify-end p-2">
+                    <button @click="toggleModalViewDetails(post.post_id)" class="relative right-0">
+                        <InformationCircleIcon class="sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-gray-100 hover:text-white" />
+                    </button>
+                    <div v-if="post.post_type == 'Adoption'">
+                        <viewshelterpostdetials v-if="selectedPostViewDetailsId === post.post_id"
+                            :selectedPostDetails="selectedPostDetails" @close="toggleModalViewDetails(post.post_id)" />
+                    </div>
+                    <div v-else>
+                        <viewbuddypostdetials v-if="selectedPostViewDetailsId === post.post_id"
+                            :selectedPostDetails="selectedPostDetails" @close="toggleModalViewDetails(post.post_id)" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-2 px-3">
+            <div class="flex items-center gap-x-4">
+                <!-- Nov20 :to="{ name: 'buddy_messages', query: { buddyId: post.user_id } }" - Salpocial's Changes -->
+                <RouterLink :to="{ name: 'buddy_messages', query: { buddyId: post.user_id } }" title="Chat with Us"
+                    class="flex items-center gap-x-2 relative group">
+                    <ChatBubbleLeftRightIcon class="sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-gray-900" />
+                    <span class="font-bold text-sm hidden group-hover:flex">
+                        Message
+                    </span>
+                </RouterLink>
+
+                <div v-if="post.post_type == 'Adoption'">
+                    <RouterLink to="" title="Pet Profile" class="flex items-center gap-x-2 relative group">
+                        <UserCircleIcon class="sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-gray-900" />
+                        <span class="font-bold text-sm hidden group-hover:flex">
+                            View Pet Profile
+                        </span>
+                    </RouterLink>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-[.5rem] py-[.5rem] flex flex-col gap-y-2 items-start bg-gray-100 bg-opacity-0 border-t">
+            <div class="py-2">
+                <p v-if="post.post_type != 'Adoption'">
+                    <i class="text-xs">
+                        <b>Location:</b>
+                        {{ post.report_address_location }}
+                    </i>
+                </p>
+                <p class="sm:text-sm md:text-base font-medium text-gray-700">
+                    <b class="pr-2">{{ post.posted_by }}</b>
+                    {{ post.content }}
+                </p>
+            </div>
+        </div>
+    </div>
+</template>
